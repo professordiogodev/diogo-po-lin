@@ -1,0 +1,11 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: po-lin-expensy-backend
+spec:
+  type: ClusterIP
+  selector:
+    app: expensy-backend
+  ports:
+    - port: 8706
