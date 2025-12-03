@@ -1,24 +1,90 @@
-#name: CI/CD Pipeline
+# #name: CI/CD Pipeline
+
+# on:
+#   push:
+#     branches:
+#       - main  # Change this to whatever branch you want to trigger the action
+
+# permissions:
+#   id-token: write
+#   contents: read
+
+# jobs:
+#   build:
+#     runs-on: ubuntu-latest
+
+#     steps:
+#       - name: Checkout
+#         uses: actions/checkout@v5           # previously v2
+
+#       - name: Configure Azure Credentials
+#         uses: azure/login@v2     # previously v1
+#         with:
+#           auth-type: SERVICE_PRINCIPAL
+#           client-id: ${{ secrets.AZURE_CLIENT_ID }}
+#           client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
+#           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+#           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+#           enable-AZPSsession: true
+# #      - name: Infrastructure build
+# #        run: terraform/terraform init
+# #             terraform/terraform plan
+# #             terraform/terraform apply -auto-approve
+# #      - name: Application build
+# #        run: backend/npm install
+# #             frontend/npm install
+# #             frontend/npm run dev
+#       # - name: Docker build & push
+#       #   run: cd expensy_backend
+#       #        docker build -t barberry/ironhack-expensy-backend .
+#       #        docker push
+#       #        cd ..
+#       #        cd expensy_frontend
+#       #        docker build -t barberry/ironhack-expensy-frontend .
+#       #        frontend/docker push
+#       #        cd ..
+
+# #      - name: Install eksctl
+# #        run: |
+# #          curl --silent --location "https://github.com/weaveworks/eksctl/releases/latest/download/eksctl_$(uname -s)_amd64.tar.gz" | tar xz -C /tmp
+# #          sudo mv /tmp/eksctl /usr/local/bin
+
+#       - name: Update Kubeconfig
+# #        run: eksctl utils write-kubeconfig --cluster ironhack-main --region us-east-2
+#         run: aws eks update-kubeconfig --name cluster-chinmayee --location "West Europe"
+
+#       - name: Apply Kubernetes Manifests
+#         run: kubectl apply -f k8s/
+
+#---------------------------------------------------------------
+
+name: CI/CD Pipeline
 
 on:
   push:
     branches:
-      - main  # Change this to whatever branch you want to trigger the action
+      - main
 
 permissions:
   id-token: write
   contents: read
 
 jobs:
-  build:
+  build-and-deploy:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v5           # previously v2
+      # --------------------------
+      # 1. Checkout code
+      # --------------------------
+      - name: Checkout repository
+        uses: actions/checkout@v5
 
+      # --------------------------
+      # 2. Login to Azure
+      # --------------------------
       - name: Configure Azure Credentials
-        uses: azure/login@v2     # previously v1
+        uses: azure/login@v2
         with:
           auth-type: SERVICE_PRINCIPAL
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
@@ -26,32 +92,43 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
           enable-AZPSsession: true
-      - name: Infrastructure build
-        run: terraform/terraform init
-             terraform/terraform plan
-             terraform/terraform apply -auto-approve
-      - name: Application build
-        run: backend/npm install
-             frontend/npm install
-             frontend/npm run dev
-      - name: Docker build & push
-        run: cd expensy_backend
-             docker build -t barberry/ironhack-expensy-backend .
-             docker push
-             cd ..
-             cd expensy_frontend
-             docker build -t barberry/ironhack-expensy-frontend .
-             frontend/docker push
-             cd ..
 
-#      - name: Install eksctl
-#        run: |
-#          curl --silent --location "https://github.com/weaveworks/eksctl/releases/latest/download/eksctl_$(uname -s)_amd64.tar.gz" | tar xz -C /tmp
-#          sudo mv /tmp/eksctl /usr/local/bin
+      # --------------------------
+      # 3. Docker login
+      # --------------------------
+      - name: Login to Docker Hub
+        run: echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
 
-      - name: Update Kubeconfig
-#        run: eksctl utils write-kubeconfig --cluster ironhack-main --region us-east-2
-        run: aws eks update-kubeconfig --name cluster-chinmayee --location "West Europe"
+      # --------------------------
+      # 4. Build & Push Backend Image
+      # --------------------------
+      - name: Build & Push Backend Docker Image
+        working-directory: expensy_backend
+        run: |
+          docker build -t barberry/ironhack-expensy-backend .
+          docker push barberry/ironhack-expensy-backend
+
+      # --------------------------
+      # 5. Build & Push Frontend Image
+      # --------------------------
+      - name: Build & Push Frontend Docker Image
+        working-directory: expensy_frontend
+        run: |
+          docker build -t barberry/ironhack-expensy-frontend .
+          docker push barberry/ironhack-expensy-frontend
+
+      # --------------------------
+      # 6. Kubernetes
+      # --------------------------
+      - name: Install kubectl
+        run: sudo az aks install-cli
+
+      - name: Update kubeconfig for AKS
+        run: |
+          az aks get-credentials \
+            --resource-group po-lin-rg \
+            --name cluster-chinmayee \
+            --overwrite-existing
 
       - name: Apply Kubernetes Manifests
         run: kubectl apply -f k8s/
