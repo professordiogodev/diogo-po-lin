@@ -1,0 +1,50 @@
+#name: CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main  # Change this to whatever branch you want to trigger the action
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5           # previously v2
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4      # previously v1
+        with:
+          az-access-key-id: ${{ secrets.AZ_ACCESS_KEY_ID }}
+          az-secret-access-key: ${{ secrets.AZ_SECRET_ACCESS_KEY }}
+          aws-region: eu-west-3
+      - name: Infrastructure build
+        run: terraform/terraform init
+             terraform/terraform plan
+             terraform/terraform apply -auto-approve
+      - name: Application build
+        run: backend/npm install
+             frontend/npm install
+             frontend/npm run dev
+      - name: Docker build & push
+        run: cd expensy_backend
+             docker build -t barberry/ironhack-expensy-backend .
+             docker push
+             cd ..
+             cd expensy_frontend
+             docker build -t barberry/ironhack-expensy-frontend .
+             frontend/docker push
+             cd ..
+
+#      - name: Install eksctl
+#        run: |
+#          curl --silent --location "https://github.com/weaveworks/eksctl/releases/latest/download/eksctl_$(uname -s)_amd64.tar.gz" | tar xz -C /tmp
+#          sudo mv /tmp/eksctl /usr/local/bin
+
+      - name: Update Kubeconfig
+#        run: eksctl utils write-kubeconfig --cluster ironhack-main --region us-east-2
+        run: aws eks update-kubeconfig --name cluster-chinmayee --location "West Europe"
+
+      - name: Apply Kubernetes Manifests
+        run: kubectl apply -f k8s/
