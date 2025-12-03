@@ -122,7 +122,7 @@ jobs:
       - name: Update kubeconfig for AKS
         run: |
           az aks get-credentials \
-            --resource-group po-lin-rg \
+            --resource-group Chinmayee-AKS \
             --name cluster-chinmayee \
             --overwrite-existing
 
