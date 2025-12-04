@@ -55,3 +55,4 @@ jobs:
 
       - name: Apply Kubernetes Manifests
         run: kubectl apply -f k8s/
+
