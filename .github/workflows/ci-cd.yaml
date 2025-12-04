@@ -100,29 +100,6 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      # --------------------------
-      # 3. Docker login
-      # --------------------------
-      - name: Login to Docker Hub
-        run: echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
-
-      # --------------------------
-      # 4. Build & Push Backend Image
-      # --------------------------
-      - name: Build & Push Backend Docker Image
-        working-directory: expensy_backend
-        run: |
-          docker build -t barberry/ironhack-expensy-backend .
-          docker push barberry/ironhack-expensy-backend
-
-      # --------------------------
-      # 5. Build & Push Frontend Image
-      # --------------------------
-      - name: Build & Push Frontend Docker Image
-        working-directory: expensy_frontend
-        run: |
-          docker build -t barberry/ironhack-expensy-frontend .
-          docker push barberry/ironhack-expensy-frontend
 
       # --------------------------
       # 6. Kubernetes
